@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::variables::{Variable, VariableBindings};
 use crate::constants::Const;
 use crate::equations::Equation;
-use crate::formulas::Formula;
+use crate::formulas::{Formula, SimplifyErr, SymbolicSolveErr};
 use std::ptr::eq;
 
 #[derive(Debug)]
@@ -72,25 +72,58 @@ impl SolverState {
                 // may need to modify it soon
                 let solving_for = (**binding_diff.first().unwrap()).clone();
 
-                if let Some(simplifying_formula) = SolverState::symbolic_solve(&solving_for, &equation.equation, &self.bindings) {
-                    if let Some(new_binding_value) = simplifying_formula.simplify(&self.bindings) {
-                        self.bindings.bind(&solving_for, &new_binding_value);
-                        Formula::print_formulas3(&solving_for.into(), &simplifying_formula, &new_binding_value.into());
-                        finished = false;
-                    } else {
-//                        println!("Couldn't simplify: {}", simplifying_formula);
-                    }
-                } else {
-//                    println!("Info: couldn't solve for {}:", solving_for);
-//                    Formula::print_formulas2(&equation.equation.left, &equation.equation.right);
-                }
+                match SolverState::symbolic_solve(&solving_for, &equation.equation, &self.bindings) {
+                    Ok(simplifying_formula) => {
+                        match simplifying_formula.simplify(&self.bindings) {
+                            Ok(new_binding_value) => {
+                                self.bindings.bind(&solving_for, &new_binding_value);
+//                        Formula::print_formulas3(&solving_for.into(), &simplifying_formula, &new_binding_value.into());
+                                finished = false;
+                                equation.used = true;
+                            },
 
-                equation.used = true;
+                            Err(SimplifyErr::NotFinite) => {
+                                equation.used = true;
+                                //                        println!("Couldn't simplify: {}", simplifying_formula);
+                            },
+
+                            Err(SimplifyErr::MissingInfo) => {
+                                // NOP
+                                //                        println!("Couldn't simplify: {}", simplifying_formula);
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        //                    println!("Info: couldn't solve for {}:", solving_for  );
+//                    Formula::print_formulas2(&equation.equation.left, &equation.equation.right);
+                        match e {
+                            SymbolicSolveErr::TargetVariableAbsent => {
+                                unreachable!()
+                            },
+
+                            SymbolicSolveErr::SignumOutOfRange => {
+                                panic!("signum out of range")
+                            },
+
+                            SymbolicSolveErr::CantSolveYet => {
+                                equation.used = true;
+                            },
+
+                            SymbolicSolveErr::MissingSignum => {
+                                equation.used = true;
+                            },
+
+                            SymbolicSolveErr::SignumValMissing => {
+                                // NOP
+                            },
+                        }
+                    },
+                }
             }
         }
     }
 
-    fn symbolic_solve(solving_for: &Variable, equation: &Equation, bindings: &VariableBindings) -> Option<Formula> {
+    fn symbolic_solve(solving_for: &Variable, equation: &Equation, bindings: &VariableBindings) -> Result<Formula, SymbolicSolveErr> {
         equation.left.solve(&equation.right, solving_for, bindings)
     }
 

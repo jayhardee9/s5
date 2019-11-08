@@ -24,6 +24,9 @@ use std::collections::HashSet;
 use crate::formulas::Functions::PosArccos;
 use crate::formulas::Side::{Both, Right, Left, Neither};
 use crate::formulas::EFormula::BinOp;
+use crate::formulas::SimplifyErr::{MissingInfo, NotFinite};
+use std::hint::unreachable_unchecked;
+use crate::formulas::SymbolicSolveErr::CantSolveYet;
 
 #[derive(Copy, Clone, Debug)]
 enum BinOps {
@@ -58,12 +61,25 @@ enum EFormula {
     Function(Functions, Box<EFormula>),
 }
 
+pub enum SimplifyErr {
+    MissingInfo,
+    NotFinite,
+}
+
+pub enum SymbolicSolveErr {
+    TargetVariableAbsent,
+    SignumOutOfRange,
+    CantSolveYet,
+    MissingSignum,
+    SignumValMissing,
+}
+
 macro_rules! simplify_simple_binop {
     ($op1:ident, $fn:ident, $op2:ident, $bindings:ident) => {
         {
             let operand1 = $op1.simplify(&$bindings)?;
             let operand2 = $op2.simplify(&$bindings)?;
-            Some(operand1.$fn(operand2))
+            Ok(operand1.$fn(operand2))
         }
     };
 }
@@ -72,7 +88,7 @@ macro_rules! simplify_function_call {
     ($arg:ident, $fn:ident, $bindings:ident) => {
         {
             let arg = $arg.simplify($bindings)?;
-            Some(Const::from(f64::from(arg).$fn()))
+            Ok(Const::from(f64::from(arg).$fn()))
         }
     };
 }
@@ -108,12 +124,16 @@ impl EFormula {
         }
     }
 
-    fn simplify(&self, bindings: &VariableBindings) -> Option<Const> {
-        match self {
-            EFormula::Const(c) => Some(*c),
+    fn simplify(&self, bindings: &VariableBindings) -> Result<Const, SimplifyErr> {
+        let rv = match self {
+            EFormula::Const(c) => Ok(*c),
 
             EFormula::Variable(v) => {
-                bindings.get(v)
+                if let Some(c) = bindings.get(v) {
+                    Ok(c)
+                } else {
+                    Err(MissingInfo)
+                }
             }
 
             EFormula::BinOp(operator, operand1, operand2) => {
@@ -140,13 +160,21 @@ impl EFormula {
 
                     Functions::NegArccos => {
                         let arg = arg.simplify(bindings)?;
-                        Some(Const::from(-f64::from(arg).acos()))
+                        Ok(Const::from(-f64::from(arg).acos()))
                     }
 
                     Functions::Sgn => simplify_function_call!(arg, signum, bindings)
                 }
             }
+        };
+
+        if let Ok(c) = rv {
+            if !c.is_finite() {
+                return Err(NotFinite);
+            }
         }
+
+        rv
     }
 
     fn side(&self, rhs: &EFormula, target: &Variable) -> Side {
@@ -167,9 +195,9 @@ impl EFormula {
         Neither
     }
 
-    fn solve(&self, rhs: &EFormula, solving_for: &Variable, bindings: &VariableBindings) -> Option<EFormula> {
+    fn solve(&self, rhs: &EFormula, solving_for: &Variable, bindings: &VariableBindings) -> Result<EFormula, SymbolicSolveErr> {
         if !self.variables().contains(solving_for) && !rhs.variables().contains(solving_for) {
-            return None;
+            return Err(SymbolicSolveErr::TargetVariableAbsent);
         }
 
         if !self.variables().contains(solving_for) {
@@ -177,21 +205,22 @@ impl EFormula {
         }
 
         match self {
-            EFormula::Const(_) => None,
+            EFormula::Const(_) => unreachable!(),
 
             EFormula::Variable(v) => {
                 if v == solving_for {
-                    Some(rhs.clone())
+                    Ok(rhs.clone())
                 } else {
-                    None
+                    unreachable!()
                 }
             },
 
             EFormula::BinOp(operator, op_lhs, op_rhs) => {
+                let side = op_lhs.side(op_rhs, solving_for);
+
                 match operator {
                     BinOps::Add => {
-
-                        match op_lhs.side(op_rhs, solving_for) {
+                        match side {
                             Left => {
                                 op_lhs.solve(&(rhs - op_rhs), solving_for, bindings)
                             },
@@ -200,12 +229,14 @@ impl EFormula {
                                 op_rhs.solve(&(rhs - op_lhs), solving_for, bindings)
                             },
 
-                            _ => None,
+                            Both => Err(CantSolveYet),
+
+                            Neither => unreachable!(),
                         }
                     },
 
                     BinOps::Subtract => {
-                        match op_lhs.side(op_rhs, solving_for) {
+                        match side {
                             Left => {
                                 op_lhs.solve(&(rhs + op_rhs), solving_for, bindings)
                             },
@@ -214,12 +245,14 @@ impl EFormula {
                                 op_rhs.solve(&(op_lhs - rhs), solving_for, bindings)
                             },
 
-                            _ => None,
+                            Both => Err(CantSolveYet),
+
+                            Neither => unreachable!(),
                         }
                     },
 
                     BinOps::Multiply => {
-                        match op_lhs.side(op_rhs, solving_for) {
+                        match side {
                             Left => {
                                 op_lhs.solve(&(rhs / op_rhs), solving_for, bindings)
                             },
@@ -228,12 +261,14 @@ impl EFormula {
                                 op_rhs.solve(&(rhs / op_lhs), solving_for, bindings)
                             },
 
-                            _ => None,
+                            Both => Err(CantSolveYet),
+
+                            Neither => unreachable!(),
                         }
                     },
 
                     BinOps::Divide => {
-                        match op_lhs.side(op_rhs, solving_for) {
+                        match side {
                             Left => {
                                 op_lhs.solve(&(rhs * op_rhs), solving_for, bindings)
                             },
@@ -242,7 +277,9 @@ impl EFormula {
                                 op_rhs.solve(&(op_lhs / rhs), solving_for, bindings)
                             },
 
-                            _ => None,
+                            Both => Err(CantSolveYet),
+
+                            Neither => unreachable!(),
                         }
                     },
 
@@ -259,10 +296,21 @@ impl EFormula {
                         match arg.as_ref() {
                             EFormula::Variable(v) => {
                                 if v != solving_for {
-                                    return None;
+                                    unreachable!()
                                 }
-                                let sgn_v = bindings.get_signum(v)?;
-                                let sgn_v_val = bindings.get(sgn_v)?;
+
+                                let sgn_v = if let Some(v) = bindings.get_signum(v) {
+                                    v
+                                } else {
+                                    return Err(SymbolicSolveErr::MissingSignum);
+                                };
+
+                                let sgn_v_val = if let Some(c) = bindings.get(sgn_v) {
+                                    c
+                                } else {
+                                    return Err(SymbolicSolveErr::SignumValMissing);
+                                };
+
                                 let new_rhs = if sgn_v_val.is_one() {
                                     EFormula::Function(Functions::PosArccos, Box::new(rhs.clone()))
                                 } else if sgn_v_val.is_zero() {
@@ -270,18 +318,17 @@ impl EFormula {
                                 } else if sgn_v_val.is_minus_one() {
                                     EFormula::Function(Functions::NegArccos, Box::new(rhs.clone()))
                                 } else {
-                                    return None;
+                                    return Err(SymbolicSolveErr::SignumOutOfRange);
                                 };
 
                                 arg.solve(&new_rhs, solving_for, bindings)
                             }
 
-                            _ => None
+                            _ => Err(SymbolicSolveErr::CantSolveYet)
                         }
                     }
 
-                    // TODO
-                    _ => None
+                    _ => Err(SymbolicSolveErr::CantSolveYet)
                 }
             }
         }
@@ -425,19 +472,14 @@ impl Formula {
         self.f.variables()
     }
 
-    pub fn simplify(&self, bindings: &VariableBindings) -> Option<Const> {
-        let rv = self.f.simplify(bindings)?;
-        if rv.is_finite() {
-            return rv.into();
-        }
-
-        None
+    pub fn simplify(&self, bindings: &VariableBindings) -> Result<Const, SimplifyErr> {
+        self.f.simplify(bindings)
     }
 
-    pub fn solve(&self, rhs: &Formula, solving_for: &Variable, bindings: &VariableBindings) -> Option<Formula> {
-        Formula {
+    pub fn solve(&self, rhs: &Formula, solving_for: &Variable, bindings: &VariableBindings) -> Result<Formula, SymbolicSolveErr> {
+        Ok(Formula {
             f: self.f.solve(&rhs.f, solving_for, bindings)?
-        }.into()
+        })
     }
 
     pub fn print_formulas3(f1: &Formula, f2: &Formula, f3: &Formula) {

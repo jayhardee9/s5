@@ -58,6 +58,13 @@ impl Const {
             EConst::FloatConst(f) => f.is_finite(),
         }
     }
+
+    pub fn to_f64(&self) -> f64 {
+        match self.c {
+            EConst::IntConst(n) => n as f64,
+            EConst::FloatConst(f) => f,
+        }
+    }
 }
 
 impl Printable for Const {

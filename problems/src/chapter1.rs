@@ -5,6 +5,7 @@ use std::f64::consts::PI;
 use solver::solver_state::SolverState;
 use crate::conversions::*;
 use crate::constants::*;
+use crate::chapter1::OrbitType::*;
 
 macro_rules! def_variable {
     ($const_name:ident, $var_name:expr, $description:expr) => {
@@ -16,6 +17,39 @@ fn general_specific_energy_equation(specific_energy: &Variable, u: &Variable, sp
     Equation::new(
         specific_energy.into(), ((speed ^ 2) / 2) - (u / distance),
     )
+}
+
+#[derive(Debug)]
+enum OrbitType {
+    Circle,
+    Ellipse,
+    Parabola,
+    Hyperbola,
+}
+
+impl OrbitType {
+    pub fn classify_by_eccentricity(e: f64) -> OrbitType {
+        if approx_eq!(f64, e, 0f64) {
+            return Circle;
+        }
+
+        if e < 1f64 {
+            return Ellipse;
+        }
+
+        if approx_eq!(f64, e, 1f64) {
+            return Parabola;
+        }
+
+        Hyperbola
+    }
+
+    pub fn classify_by_semi_major_axis(a: f64) -> Option<OrbitType> {
+        if a < 0f64 {
+            return Hyperbola.into();
+        }
+        None
+    }
 }
 
 pub fn run() {
@@ -63,8 +97,8 @@ pub fn run() {
             Equation::new_assignment(h_y, (r_z * v_x) - (r_x * v_z)),
             Equation::new_assignment(h_z, (r_x * v_y) - (r_y * v_x)),
 
-            Equation::new_assignment(h, r * v * (Formula::from(phi).sin())),
-            Equation::new_assignment(h, r * v * (Formula::from(gamma).cos())),
+            Equation::new_assignment(h, r * v * (Formula::from(phi).cos())),
+            Equation::new_assignment(h, r * v * (Formula::from(gamma).sin())),
             Equation::new_assignment(h, ((h_x ^ 2) + (h_y ^ 2) + (h_z ^ 2)) ^ half.clone()),
             Equation::new_assignment(h, r_p * v_p),
             Equation::new_assignment(h, r_a * v_a),
@@ -130,4 +164,132 @@ pub fn run() {
     state.deduce();
 
     println!("{} = {}", e, state.get_binding(e).expect("e solved"));
+
+    println!("\nProblem 1.3");
+    state.clear_bindings();
+
+    state.bind_variable(r_p, &(from_nautical_miles(100) as f64 + EARTH_RADIUS).into());
+    state.bind_variable(r_a, &(from_nautical_miles(600) as f64 + EARTH_RADIUS).into());
+    state.bind_variable(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
+
+    state.deduce();
+
+    println!("{} = {}", tp, state.get_binding(tp).expect("TP solvecd"));
+
+    println!("\nProblem 1.5");
+    state.clear_bindings();
+
+    state.bind_variable(a, &from_feet(30_000_000).into());
+    state.bind_variable(e, &0.2.into());
+    state.bind_variable(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
+    state.bind_variable(nu, &135f64.to_radians().into());
+
+    state.deduce();
+
+    println!("{} = {}", r_p, state.get_binding(r_p).expect("r_p solved"));
+    println!("{} = {}", r_a, state.get_binding(r_a).expect("r_a solved"));
+    println!("{} = {}", me, state.get_binding(me).expect("me solved"));
+    println!("{} = {}", p, state.get_binding(p).expect("p solved"));
+    let r_feet = to_feet(state.get_binding(r).expect("r solved").to_f64());
+    println!("{} = {} ft", r, r_feet);
+
+    println!("\nProblem 1.8");
+    state.clear_bindings();
+
+    print!("\n(a) ");
+
+    state.add_binding(r, &3.into());
+    state.add_binding(v, &1.5.into());
+    state.add_binding(u, &1.into());
+
+    state.deduce();
+
+    println!("{:?} ", OrbitType::classify_by_semi_major_axis(state.get_binding(a).expect("a solved").to_f64()).expect("classification"));
+
+    print!("\n(b) ");
+    state.clear_bindings();
+
+    state.add_binding(r_p, &1.5.into());
+    state.add_binding(p, &3.into());
+    state.add_binding(u, &1.into());
+
+    state.deduce();
+
+    println!("{:?} ", OrbitType::classify_by_eccentricity(state.get_binding(e).expect("e solved").to_f64()));
+
+    print!("\n(c) ");
+    state.clear_bindings();
+
+    state.add_binding(me, &(-1.0 / 3.0).into());
+    state.add_binding(p, &1.5.into());
+    state.add_binding(u, &1.into());
+
+    state.deduce();
+
+    println!("{:?} ", OrbitType::classify_by_eccentricity(state.get_binding(e).expect("e solved").to_f64()));
+
+    print!("\n(d) ");
+    state.clear_bindings();
+
+    state.add_binding(r_x, &0.into());
+    state.add_binding(r_y, &1.into());
+    state.add_binding(r_z, &0.2.into());
+
+    state.add_binding(v_x, &0.9.into());
+    state.add_binding(v_y, &0.into());
+    state.add_binding(v_z, &0.123.into());
+
+    state.add_binding(u, &1.into());
+
+    state.deduce();
+
+    println!("{:?} ", OrbitType::classify_by_eccentricity(state.get_binding(e).expect("e solved").to_f64()));
+
+    print!("\n(e) ");
+    state.clear_bindings();
+
+    state.add_binding(r_x, &0.into());
+    state.add_binding(r_y, &0.into());
+    state.add_binding(r_z, &1.01.into());
+
+    state.add_binding(v_x, &1.into());
+    state.add_binding(v_y, &0.into());
+    state.add_binding(v_z, &1.4.into());
+
+    state.add_binding(u, &1.into());
+
+    state.deduce();
+
+    println!("{:?} ", OrbitType::classify_by_eccentricity(state.get_binding(e).expect("e solved").to_f64()));
+
+    println!("\nProblem 1.9");
+    state.clear_bindings();
+
+    state.add_binding(v, &from_feet(25_000).into());
+    state.add_binding(r, &(from_feet(300_000) + EARTH_RADIUS).into());
+    state.add_binding(phi, &(-60f64.to_radians()).into());
+    state.add_binding(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
+
+    state.deduce();
+
+    let eccentricity = state.get_binding(e).expect("e solved");
+    let specific_angular_momentum = state.get_binding(h).expect("h solved");
+
+    state.clear_bindings();
+
+    state.add_binding(e, &eccentricity);
+    state.add_binding(h, &specific_angular_momentum);
+    state.add_binding(r, &(from_nautical_miles(100) as f64 + EARTH_RADIUS).into());
+    state.add_binding(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
+
+    let n_one = -1i64;
+    state.add_binding(sgn_phi, &n_one.into());
+
+    state.deduce();
+
+    let v_fps = to_feet(state.get_binding(v).expect("v solved").to_f64());
+    println!("{} = {} ft/sec", v, v_fps);
+
+    let phi_degs = state.get_binding(phi).expect("phi solved").to_f64().to_degrees();
+    println!("{} = {} deg", phi, phi_degs);
 }
