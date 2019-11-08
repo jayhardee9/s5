@@ -14,15 +14,18 @@
 /// ```
 
 use crate::variables::{Variable, VariableBindings};
-use std::rc::Rc;
 use std::{ops, fmt};
 use std::ops::{Add, Sub, Div, Mul, BitXor};
 use crate::constants::Const;
 use crate::display::{Printable, PrintUnit, PrintUnits};
 use std::cmp::max;
-use std::fmt::{Formatter, Error, Pointer};
+use std::fmt::{Formatter, Error};
 use std::collections::HashSet;
+use crate::formulas::Functions::PosArccos;
+use crate::formulas::Side::{Both, Right, Left, Neither};
+use crate::formulas::EFormula::BinOp;
 
+#[derive(Copy, Clone)]
 enum BinOps {
     Add,
     Subtract,
@@ -31,6 +34,7 @@ enum BinOps {
     Pow,
 }
 
+#[derive(Copy, Clone)]
 enum Functions {
     Sin,
     Cos,
@@ -39,11 +43,19 @@ enum Functions {
     Sgn,
 }
 
+enum Side {
+    Left,
+    Right,
+    Both,
+    Neither,
+}
+
+#[derive(Clone)]
 enum EFormula {
     Const(Const),
     Variable(Variable),
-    BinOp(BinOps, Rc<EFormula>, Rc<EFormula>),
-    Function(Functions, Rc<EFormula>),
+    BinOp(BinOps, Box<EFormula>, Box<EFormula>),
+    Function(Functions, Box<EFormula>),
 }
 
 macro_rules! simplify_simple_binop {
@@ -66,37 +78,43 @@ macro_rules! simplify_function_call {
 }
 
 impl EFormula {
+    fn invert(&self) -> EFormula {
+        let one = Box::new(EFormula::Const(Const::from(1)));
+
+        EFormula::BinOp(BinOps::Divide, one, Box::new(self.clone()))
+    }
+
     fn variables(&self) -> HashSet<&Variable> {
         match self {
             EFormula::Const(_) => {
                 HashSet::new()
-            },
+            }
 
             EFormula::Variable(v) => {
                 let mut rv = HashSet::new();
                 rv.insert(v);
                 rv
-            },
+            }
 
             EFormula::BinOp(_, op1, op2) => {
                 let mut op1_vars = op1.variables();
                 op1_vars.extend(&op2.variables());
                 op1_vars
-            },
+            }
 
             EFormula::Function(_, arg) => {
                 arg.variables()
-            },
+            }
         }
     }
-    
+
     fn simplify(&self, bindings: &VariableBindings) -> Option<Const> {
         match self {
             EFormula::Const(c) => Some(*c),
 
             EFormula::Variable(v) => {
-                bindings.get(v).map(|&c| c)
-            },
+                bindings.get(v)
+            }
 
             EFormula::BinOp(operator, operand1, operand2) => {
                 match operator {
@@ -110,7 +128,7 @@ impl EFormula {
 
                     BinOps::Pow => simplify_simple_binop!(operand1, bitxor, operand2, bindings),
                 }
-            },
+            }
 
             EFormula::Function(function, arg) => {
                 match function {
@@ -123,12 +141,156 @@ impl EFormula {
                     Functions::NegArccos => {
                         let arg = arg.simplify(bindings)?;
                         Some(Const::from(-f64::from(arg).acos()))
-                    },
+                    }
 
                     Functions::Sgn => simplify_function_call!(arg, signum, bindings)
                 }
-            },
+            }
         }
+    }
+
+    fn side(&self, rhs: &EFormula, target: &Variable) -> Side {
+        let on_right = rhs.variables().contains(target);
+        let on_left = self.variables().contains(target);
+        if on_left && on_right {
+            return Both;
+        }
+
+        if on_right {
+            return Right;
+        }
+
+        if on_left {
+            return Left;
+        }
+
+        Neither
+    }
+
+    fn solve(&self, rhs: &EFormula, solving_for: &Variable, bindings: &VariableBindings) -> Option<EFormula> {
+        if !self.variables().contains(solving_for) && !rhs.variables().contains(solving_for) {
+            return None;
+        }
+
+        if !self.variables().contains(solving_for) {
+            return rhs.solve(self, solving_for, bindings);
+        }
+
+        match self {
+            EFormula::Const(_) => None,
+
+            EFormula::Variable(v) => {
+                if v == solving_for {
+                    Some(rhs.clone())
+                } else {
+                    None
+                }
+            },
+
+            EFormula::BinOp(operator, op_lhs, op_rhs) => {
+                match operator {
+                    BinOps::Add => {
+
+                        match op_lhs.side(op_rhs, solving_for) {
+                            Left => {
+                                op_lhs.solve(&(rhs - op_rhs), solving_for, bindings)
+                            },
+
+                            Right => {
+                                op_rhs.solve(&(rhs - op_lhs), solving_for, bindings)
+                            },
+
+                            _ => None,
+                        }
+                    },
+
+                    BinOps::Subtract => {
+                        match op_lhs.side(op_rhs, solving_for) {
+                            Left => {
+                                op_lhs.solve(&(rhs + op_rhs), solving_for, bindings)
+                            },
+
+                            Right => {
+                                op_rhs.solve(&(op_lhs - rhs), solving_for, bindings)
+                            },
+
+                            _ => None,
+                        }
+                    },
+
+                    BinOps::Multiply => {
+                        match op_lhs.side(op_rhs, solving_for) {
+                            Left => {
+                                op_lhs.solve(&(rhs / op_rhs), solving_for, bindings)
+                            },
+
+                            Right => {
+                                op_rhs.solve(&(rhs / op_lhs), solving_for, bindings)
+                            },
+
+                            _ => None,
+                        }
+                    },
+
+                    BinOps::Divide => {
+                        match op_lhs.side(op_rhs, solving_for) {
+                            Left => {
+                                op_lhs.solve(&(rhs * op_rhs), solving_for, bindings)
+                            },
+
+                            Right => {
+                                op_rhs.solve(&(op_lhs / rhs), solving_for, bindings)
+                            },
+
+                            _ => None,
+                        }
+                    },
+
+                    BinOps::Pow => {
+                        let exponent = &Box::new(op_rhs.invert());
+                        op_lhs.solve(&(rhs^exponent), solving_for, bindings)
+                    },
+                }
+            },
+
+            EFormula::Function(function, arg) => {
+                match function {
+                    Functions::Cos => {
+                        match arg.as_ref() {
+                            EFormula::Variable(v) => {
+                                if v != solving_for {
+                                    return None;
+                                }
+                                let sgn_v = bindings.get_signum(v)?;
+                                let sgn_v_val = bindings.get(sgn_v)?;
+                                let new_rhs = if sgn_v_val.is_one() {
+                                    EFormula::Function(Functions::PosArccos, Box::new(rhs.clone()))
+                                } else if sgn_v_val.is_zero() {
+                                    0.into()
+                                } else if sgn_v_val.is_minus_one() {
+                                    EFormula::Function(Functions::NegArccos, Box::new(rhs.clone()))
+                                } else {
+                                    return None;
+                                };
+
+                                arg.solve(&new_rhs, solving_for, bindings)
+                            }
+
+                            _ => None
+                        }
+                    }
+
+                    // TODO
+                    _ => None
+                }
+            }
+        }
+    }
+}
+
+impl From<i64> for EFormula {
+    fn from(i: i64) -> Self {
+        EFormula::Const(i.into())
     }
 }
 
@@ -146,11 +308,11 @@ impl Printable for EFormula {
         match self {
             EFormula::Const(c) => {
                 c.to_print_units()
-            },
+            }
 
             EFormula::Variable(v) => {
                 v.to_print_units()
-            },
+            }
 
             EFormula::BinOp(operator, operand1, operand2) => {
                 let mut operand1_units = operand1.to_print_units();
@@ -160,17 +322,17 @@ impl Printable for EFormula {
                     BinOps::Add => {
                         simple_binop_print_units("+", &mut operand1_units, &mut operand2_units);
                         operand1_units
-                    },
+                    }
 
                     BinOps::Subtract => {
                         simple_binop_print_units("-", &mut operand1_units, &mut operand2_units);
                         operand1_units
-                    },
+                    }
 
                     BinOps::Multiply => {
                         simple_binop_print_units("*", &mut operand1_units, &mut operand2_units);
                         operand1_units
-                    },
+                    }
 
                     BinOps::Divide => {
                         let bar_length = max(operand1_units.width(), operand2_units.width());
@@ -183,16 +345,16 @@ impl Printable for EFormula {
                         operand1_units.append(&operator_units);
                         operand1_units.append(&operand2_units);
                         operand1_units
-                    },
+                    }
 
                     BinOps::Pow => {
                         operand2_units.on_top_of(&operand1_units);
                         operand2_units.right_of(&operand1_units);
                         operand1_units.append(&operand2_units);
                         operand1_units
-                    },
+                    }
                 }
-            },
+            }
 
             EFormula::Function(function, argument) => {
                 let function_part1 = match function {
@@ -218,48 +380,105 @@ impl Printable for EFormula {
                 function_units1.append(&arg_units);
                 function_units1.append(&function_units2);
                 function_units1
-            },
+            }
         }
     }
 }
 
+#[derive(Clone)]
 pub struct Formula {
-    f: Rc<EFormula>,
+    f: EFormula,
 }
 
 impl Formula {
     pub fn sin(&self) -> Formula {
         Formula {
-            f: Rc::new(EFormula::Function(Functions::Sin, Rc::clone(&self.f))),
+            f: EFormula::Function(Functions::Sin, self.f.clone().into()),
         }
     }
 
     pub fn cos(&self) -> Formula {
         Formula {
-            f: Rc::new(EFormula::Function(Functions::Cos, Rc::clone(&self.f))),
+            f: EFormula::Function(Functions::Cos, self.f.clone().into()),
         }
     }
 
     pub fn pos_acos(&self) -> Formula {
         Formula {
-            f: Rc::new(EFormula::Function(Functions::PosArccos, Rc::clone(&self.f))),
+            f: EFormula::Function(Functions::PosArccos, self.f.clone().into()),
         }
     }
 
     pub fn neg_acos(&self) -> Formula {
         Formula {
-            f: Rc::new(EFormula::Function(Functions::NegArccos, Rc::clone(&self.f))),
+            f: EFormula::Function(Functions::NegArccos, self.f.clone().into()),
+        }
+    }
+
+    pub fn sgn(&self) -> Formula {
+        Formula {
+            f: EFormula::Function(Functions::Sgn, self.f.clone().into()),
         }
     }
 
     pub fn variables(&self) -> HashSet<&Variable> {
         self.f.variables()
     }
+
+    pub fn simplify(&self, bindings: &VariableBindings) -> Option<Const> {
+        let rv = self.f.simplify(bindings)?;
+        if rv.is_finite() {
+            return rv.into();
+        }
+
+        None
+    }
+
+    pub fn solve(&self, rhs: &Formula, solving_for: &Variable, bindings: &VariableBindings) -> Option<Formula> {
+        Formula {
+            f: self.f.solve(&rhs.f, solving_for, bindings)?
+        }.into()
+    }
+
+    pub fn print_formulas3(f1: &Formula, f2: &Formula, f3: &Formula) {
+        let mut f1_units = f1.f.to_print_units();
+        let mut eq1 = PrintUnits::new(vec![PrintUnit::new(" = ")]);
+        let mut f2_units = f2.f.to_print_units();
+        let mut eq2 = PrintUnits::new(vec![PrintUnit::new(" = ")]);
+        let mut f3_units = f3.f.to_print_units();
+
+        eq1.right_of(&f1_units);
+        f2_units.right_of(&eq1);
+        eq2.right_of(&f2_units);
+        f3_units.right_of(&eq2);
+
+        f1_units.append(&eq1);
+        f1_units.append(&f2_units);
+        f1_units.append(&eq2);
+        f1_units.append(&f3_units);
+
+        println!("\n{}\n", f1_units);
+    }
+
+    pub fn print_formulas2(f1: &Formula, f2: &Formula) {
+        let mut f1_units = f1.f.to_print_units();
+        let mut eq = PrintUnits::new(vec![PrintUnit::new(" = ")]);
+        let mut f2_units = f2.f.to_print_units();
+
+        eq.right_of(&f1_units);
+        f2_units.right_of(&eq);
+
+        f1_units.append(&eq);
+        f1_units.append(&f2_units);
+
+        println!("\n{}\n", f1_units);
+    }
 }
 
 impl fmt::Display for Formula {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         let units = self.f.to_print_units();
+        writeln!(f, "")?;
         units.fmt(f)
     }
 }
@@ -267,7 +486,7 @@ impl fmt::Display for Formula {
 impl From<i64> for Formula {
     fn from(i: i64) -> Self {
         Formula {
-            f: Rc::new(EFormula::Const(i.into())),
+            f: EFormula::Const(i.into()),
         }
     }
 }
@@ -275,7 +494,7 @@ impl From<i64> for Formula {
 impl From<f64> for Formula {
     fn from(f: f64) -> Self {
         Formula {
-            f: Rc::new(EFormula::Const(f.into())),
+            f: EFormula::Const(f.into()),
         }
     }
 }
@@ -283,7 +502,15 @@ impl From<f64> for Formula {
 impl From<Const> for Formula {
     fn from(c: Const) -> Self {
         Formula {
-            f: Rc::new(EFormula::Const(c)),
+            f: EFormula::Const(c),
+        }
+    }
+}
+
+impl From<&Const> for Formula {
+    fn from(c: &Const) -> Self {
+        Formula {
+            f: EFormula::Const(*c),
         }
     }
 }
@@ -291,7 +518,15 @@ impl From<Const> for Formula {
 impl From<Variable> for Formula {
     fn from(v: Variable) -> Self {
         Formula {
-            f: Rc::new(EFormula::Variable(v)),
+            f: EFormula::Variable(v),
+        }
+    }
+}
+
+impl From<&Variable> for Formula {
+    fn from(v: &Variable) -> Self {
+        Formula {
+            f: EFormula::Variable(v.clone()),
         }
     }
 }
@@ -303,7 +538,7 @@ macro_rules! formula_op {
 
             fn $fn(self, rhs: Formula) -> Self::Output {
                 Formula {
-                    f: Rc::new(EFormula::BinOp($($bin_op_ty)::+, self.f, rhs.f)),
+                    f: EFormula::BinOp($($bin_op_ty)::+, Box::new(self.f), Box::new(rhs.f)),
                 }
             }
         }
@@ -348,6 +583,30 @@ macro_rules! formula_op {
             }
         }
 
+        impl $($trait)::+<&Variable> for Variable {
+            type Output = Formula;
+
+            fn $fn(self, rhs: &Variable) -> Formula {
+                Formula::from(self).$fn(Formula::from(rhs))
+            }
+        }
+
+        impl $($trait)::+<Variable> for &Variable {
+            type Output = Formula;
+
+            fn $fn(self, rhs: Variable) -> Formula {
+                Formula::from(self).$fn(Formula::from(rhs))
+            }
+        }
+
+        impl $($trait)::+<&Variable> for &Variable {
+            type Output = Formula;
+
+            fn $fn(self, rhs: &Variable) -> Formula {
+                Formula::from(self).$fn(Formula::from(rhs))
+            }
+        }
+
         impl $($trait)::+<Variable> for i64 {
             type Output = Formula;
 
@@ -356,7 +615,23 @@ macro_rules! formula_op {
             }
         }
 
+        impl $($trait)::+<&Variable> for i64 {
+            type Output = Formula;
+
+            fn $fn(self, rhs: &Variable) -> Formula {
+                Formula::from(self).$fn(Formula::from(rhs))
+            }
+        }
+
         impl $($trait)::+<i64> for Variable {
+            type Output = Formula;
+
+            fn $fn(self, rhs: i64) -> Formula {
+                Formula::from(self).$fn(Formula::from(rhs))
+            }
+        }
+
+        impl $($trait)::+<i64> for &Variable {
             type Output = Formula;
 
             fn $fn(self, rhs: i64) -> Formula {
@@ -388,11 +663,78 @@ macro_rules! formula_op {
             }
         }
 
+        impl $($trait)::+<&Variable> for Formula {
+            type Output = Formula;
+
+            fn $fn(self, rhs: &Variable) -> Formula {
+                self.$fn(Formula::from(rhs))
+            }
+        }
+
         impl $($trait)::+<Formula> for Variable {
             type Output = Formula;
 
             fn $fn(self, rhs: Formula) -> Formula {
                 Formula::from(self).$fn(rhs)
+            }
+        }
+
+        impl $($trait)::+<Formula> for &Variable {
+            type Output = Formula;
+
+            fn $fn(self, rhs: Formula) -> Formula {
+                Formula::from(self).$fn(rhs)
+            }
+        }
+
+        // EFormula implementations
+        impl $($trait)::+<EFormula> for EFormula {
+            type Output = EFormula;
+
+            fn $fn(self, rhs: EFormula) -> EFormula {
+                EFormula::BinOp($($bin_op_ty)::+,
+                    Box::new(self.clone()),
+                    Box::new(rhs.clone()))
+            }
+        }
+
+        impl $($trait)::+<&Box<EFormula>> for &EFormula {
+            type Output = EFormula;
+
+            fn $fn(self, rhs: &Box<EFormula>) -> Self::Output {
+                EFormula::BinOp($($bin_op_ty)::+, Box::new(self.clone()), rhs.clone())
+            }
+        }
+
+        impl $($trait)::+<&EFormula> for &Box<EFormula> {
+            type Output = EFormula;
+
+            fn $fn(self, rhs: &EFormula) -> Self::Output {
+                EFormula::BinOp($($bin_op_ty)::+, self.clone(), Box::new(rhs.clone()))
+            }
+        }
+
+        impl $($trait)::+<Box<EFormula>> for Box<EFormula> {
+            type Output = EFormula;
+
+            fn $fn(self, rhs: Box<EFormula>) -> Self::Output {
+                EFormula::BinOp($($bin_op_ty)::+, self, rhs)
+            }
+        }
+
+        impl $($trait)::+<&Box<EFormula>> for Box<EFormula> {
+            type Output = EFormula;
+
+            fn $fn(self, rhs: &Box<EFormula>) -> Self::Output {
+                EFormula::BinOp($($bin_op_ty)::+, self, rhs.clone())
+            }
+        }
+
+        impl $($trait)::+<Box<EFormula>> for &Box<EFormula> {
+            type Output = EFormula;
+
+            fn $fn(self, rhs: Box<EFormula>) -> Self::Output {
+                EFormula::BinOp($($bin_op_ty)::+, self.clone(), rhs)
             }
         }
     };

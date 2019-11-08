@@ -1,7 +1,8 @@
 use std::ops;
 use crate::display::{Printable, PrintUnit, PrintUnits};
+use std::fmt::{Formatter, Error};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialOrd, PartialEq, Debug)]
 enum EConst {
     IntConst(i64),
 
@@ -24,14 +25,50 @@ impl Printable for EConst {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Const {
     c: EConst,
+}
+
+impl Const {
+    pub fn is_one(&self) -> bool {
+        match self.c {
+            EConst::IntConst(n) => n == 1,
+            EConst::FloatConst(_) => false,
+        }
+    }
+
+    pub fn is_minus_one(&self) -> bool {
+        match self.c {
+            EConst::IntConst(n) => n == -1,
+            EConst::FloatConst(_) => false,
+        }
+    }
+
+    pub fn is_zero(&self) -> bool {
+        match self.c {
+            EConst::IntConst(n) => n == 0,
+            EConst::FloatConst(_) => false,
+        }
+    }
+
+    pub fn is_finite(&self) -> bool {
+        match self.c {
+            EConst::IntConst(_) => true,
+            EConst::FloatConst(f) => f.is_finite(),
+        }
+    }
 }
 
 impl Printable for Const {
     fn to_print_units(&self) -> PrintUnits {
         self.c.to_print_units()
+    }
+}
+
+impl std::fmt::Display for Const {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        self.to_print_units().fmt(f)
     }
 }
 
@@ -131,7 +168,70 @@ macro_rules! const_op {
 const_op!(ops::Add, add);
 const_op!(ops::Sub, sub);
 const_op!(ops::Mul, mul);
-const_op!(ops::Div, div);
+
+impl ops::Div<Const> for Const {
+    type Output = Const;
+
+    fn div(self, rhs: Const) -> Self::Output {
+        match (self.c, rhs.c) {
+            (EConst::IntConst(i1), EConst::IntConst(i2)) => {
+                Const {
+                    c: EConst::FloatConst((i1 as f64).div(i2 as f64)),
+                }
+            },
+
+            (EConst::IntConst(i), EConst::FloatConst(f)) => {
+                Const {
+                    c: EConst::FloatConst((i as f64).div(f)),
+                }
+            },
+
+            (EConst::FloatConst(f), EConst::IntConst(i)) => {
+                Const {
+                    c: EConst::FloatConst(f.div(i as f64)),
+                }
+            },
+
+            (EConst::FloatConst(f1), EConst::FloatConst(f2)) => {
+                Const {
+                    c: EConst::FloatConst(f1.div(f2)),
+                }
+            },
+        }
+    }
+}
+
+impl ops::Div<i64> for Const {
+    type Output = Const;
+
+    fn div(self, rhs: i64) -> Self::Output {
+        self.div(Const::from(rhs))
+    }
+}
+
+impl ops::Div<Const> for i64 {
+    type Output = Const;
+
+    fn div(self, rhs: Const) -> Self::Output {
+        Const::from(self).div(rhs)
+    }
+}
+
+impl ops::Div<f64> for Const {
+    type Output = Const;
+
+    fn div(self, rhs: f64) -> Const {
+        self.div(Const::from(rhs))
+    }
+}
+
+impl ops::Div<Const> for f64 {
+    type Output = Const;
+
+    fn div(self, rhs: Const) -> Const {
+        Const::from(self).div(rhs)
+    }
+}
 
 // Using the ^ for exponents
 impl ops::BitXor<i64> for Const {
