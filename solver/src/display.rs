@@ -120,16 +120,16 @@ impl fmt::Display for PrintUnits {
             }
 
             while cur_y < print_unit.y {
-                write!(f, "\n");
+                writeln!(f, "")?;
                 cur_y += 1;
             }
 
             while cur_x < print_unit.x {
-                write!(f, " ");
+                write!(f, " ")?;
                 cur_x += 1;
             }
 
-            f.write_str(&print_unit.s);
+            f.write_str(&print_unit.s)?;
 
             cur_x += print_unit.s.len() as i64;
         }

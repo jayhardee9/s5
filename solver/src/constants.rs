@@ -1,6 +1,7 @@
 use std::ops;
 use crate::display::{Printable, PrintUnit, PrintUnits};
 
+#[derive(Copy, Clone)]
 enum EConst {
     IntConst(i64),
 
@@ -23,6 +24,7 @@ impl Printable for EConst {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Const {
     c: EConst,
 }
@@ -45,6 +47,15 @@ impl From<f64> for Const {
     fn from(f: f64) -> Self {
         Const {
             c: EConst::FloatConst(f),
+        }
+    }
+}
+
+impl From<Const> for f64 {
+    fn from(c: Const) -> Self {
+        match c.c {
+            EConst::IntConst(i) => i as f64,
+            EConst::FloatConst(f) => f,
         }
     }
 }

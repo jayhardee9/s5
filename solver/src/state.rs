@@ -1,9 +1,9 @@
 use std::collections::HashMap;
-use crate::variables::Variable;
+use crate::variables::{Variable, VariableBindings};
 use crate::constants::Const;
 
 pub struct State {
-    bindings: HashMap<Variable, Option<Const>>,
+    bindings: VariableBindings,
     signums: HashMap<Variable, Variable>,
 }
 

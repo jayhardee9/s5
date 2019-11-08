@@ -13,13 +13,15 @@
 /// let f: Formula = s^2 / 2 - u / r;
 /// ```
 
-use crate::variables::Variable;
+use crate::variables::{Variable, VariableBindings};
 use std::rc::Rc;
 use std::{ops, fmt};
+use std::ops::{Add, Sub, Div, Mul, BitXor};
 use crate::constants::Const;
 use crate::display::{Printable, PrintUnit, PrintUnits};
 use std::cmp::max;
 use std::fmt::{Formatter, Error, Pointer};
+use std::collections::HashSet;
 
 enum BinOps {
     Add,
@@ -34,6 +36,7 @@ enum Functions {
     Cos,
     PosArccos,
     NegArccos,
+    Sgn,
 }
 
 enum EFormula {
@@ -41,6 +44,92 @@ enum EFormula {
     Variable(Variable),
     BinOp(BinOps, Rc<EFormula>, Rc<EFormula>),
     Function(Functions, Rc<EFormula>),
+}
+
+macro_rules! simplify_simple_binop {
+    ($op1:ident, $fn:ident, $op2:ident, $bindings:ident) => {
+        {
+            let operand1 = $op1.simplify(&$bindings)?;
+            let operand2 = $op2.simplify(&$bindings)?;
+            Some(operand1.$fn(operand2))
+        }
+    };
+}
+
+macro_rules! simplify_function_call {
+    ($arg:ident, $fn:ident, $bindings:ident) => {
+        {
+            let arg = $arg.simplify($bindings)?;
+            Some(Const::from(f64::from(arg).$fn()))
+        }
+    };
+}
+
+impl EFormula {
+    fn variables(&self) -> HashSet<&Variable> {
+        match self {
+            EFormula::Const(_) => {
+                HashSet::new()
+            },
+
+            EFormula::Variable(v) => {
+                let mut rv = HashSet::new();
+                rv.insert(v);
+                rv
+            },
+
+            EFormula::BinOp(_, op1, op2) => {
+                let mut op1_vars = op1.variables();
+                op1_vars.extend(&op2.variables());
+                op1_vars
+            },
+
+            EFormula::Function(_, arg) => {
+                arg.variables()
+            },
+        }
+    }
+    
+    fn simplify(&self, bindings: &VariableBindings) -> Option<Const> {
+        match self {
+            EFormula::Const(c) => Some(*c),
+
+            EFormula::Variable(v) => {
+                bindings.get(v).map(|&c| c)
+            },
+
+            EFormula::BinOp(operator, operand1, operand2) => {
+                match operator {
+                    BinOps::Add => simplify_simple_binop!(operand1, add, operand2, bindings),
+
+                    BinOps::Subtract => simplify_simple_binop!(operand1, sub, operand2, bindings),
+
+                    BinOps::Multiply => simplify_simple_binop!(operand1, mul, operand2, bindings),
+
+                    BinOps::Divide => simplify_simple_binop!(operand1, div, operand2, bindings),
+
+                    BinOps::Pow => simplify_simple_binop!(operand1, bitxor, operand2, bindings),
+                }
+            },
+
+            EFormula::Function(function, arg) => {
+                match function {
+                    Functions::Sin => simplify_function_call!(arg, sin, bindings),
+
+                    Functions::Cos => simplify_function_call!(arg, cos, bindings),
+
+                    Functions::PosArccos => simplify_function_call!(arg, acos, bindings),
+
+                    Functions::NegArccos => {
+                        let arg = arg.simplify(bindings)?;
+                        Some(Const::from(-f64::from(arg).acos()))
+                    },
+
+                    Functions::Sgn => simplify_function_call!(arg, signum, bindings)
+                }
+            },
+        }
+    }
 }
 
 // Stores result in `operand1_units`
@@ -85,8 +174,8 @@ impl Printable for EFormula {
 
                     BinOps::Divide => {
                         let bar_length = max(operand1_units.width(), operand2_units.width());
-                        let bar = str::repeat("-", bar_length);
-                        let mut operator_units = PrintUnits::new(vec![PrintUnit::new(&format!(" {} ", bar))]);
+                        let div_bar = str::repeat("-", bar_length);
+                        let operator_units = PrintUnits::new(vec![PrintUnit::new(&format!(" {} ", div_bar))]);
                         operand1_units.shift_right(1);
                         operand2_units.shift_right(1);
                         operand2_units.below(&operator_units);
@@ -107,21 +196,15 @@ impl Printable for EFormula {
 
             EFormula::Function(function, argument) => {
                 let function_part1 = match function {
-                    Functions::Sin => {
-                        "sin("
-                    },
+                    Functions::Sin => "sin(",
 
-                    Functions::Cos => {
-                        "cos("
-                    },
+                    Functions::Cos => "cos(",
 
-                    Functions::PosArccos => {
-                        "acos+("
-                    },
+                    Functions::PosArccos => "acos+(",
 
-                    Functions::NegArccos => {
-                        "acos-("
-                    },
+                    Functions::NegArccos => "acos-(",
+
+                    Functions::Sgn => "sgn(",
                 };
                 let mut function_units1 =
                     PrintUnits::new(vec![PrintUnit::new(function_part1)]);
@@ -167,6 +250,10 @@ impl Formula {
         Formula {
             f: Rc::new(EFormula::Function(Functions::NegArccos, Rc::clone(&self.f))),
         }
+    }
+
+    pub fn variables(&self) -> HashSet<&Variable> {
+        self.f.variables()
     }
 }
 
