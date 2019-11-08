@@ -2,7 +2,7 @@ use crate::formulas::Formula;
 use crate::variables::Variable;
 use std::collections::HashSet;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Equation {
     pub left: Formula,
     pub right: Formula,

@@ -5,12 +5,13 @@ use crate::equations::Equation;
 use crate::formulas::Formula;
 use std::ptr::eq;
 
+#[derive(Debug)]
 struct SolverEquation {
     used: bool,
     equation: Equation,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SolverState {
     equations: Vec<SolverEquation>,
     pub bindings: VariableBindings,
@@ -77,11 +78,11 @@ impl SolverState {
                         Formula::print_formulas3(&solving_for.into(), &simplifying_formula, &new_binding_value.into());
                         finished = false;
                     } else {
-                        println!("Couldn't simplify: {}", simplifying_formula);
+//                        println!("Couldn't simplify: {}", simplifying_formula);
                     }
                 } else {
-                    println!("Info: couldn't solve for {}:", solving_for);
-                    Formula::print_formulas2(&equation.equation.left, &equation.equation.right);
+//                    println!("Info: couldn't solve for {}:", solving_for);
+//                    Formula::print_formulas2(&equation.equation.left, &equation.equation.right);
                 }
 
                 equation.used = true;
@@ -103,5 +104,13 @@ impl SolverState {
 
     pub fn get_binding(&self, var: &Variable) -> Option<Const> {
         self.bindings.get(var)
+    }
+
+    pub fn clear_bindings(&mut self) {
+        self.bindings.clear_bindings();
+
+        for equation in self.equations.iter_mut() {
+            equation.used = false
+        }
     }
 }

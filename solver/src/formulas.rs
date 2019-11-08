@@ -25,7 +25,7 @@ use crate::formulas::Functions::PosArccos;
 use crate::formulas::Side::{Both, Right, Left, Neither};
 use crate::formulas::EFormula::BinOp;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum BinOps {
     Add,
     Subtract,
@@ -34,7 +34,7 @@ enum BinOps {
     Pow,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum Functions {
     Sin,
     Cos,
@@ -50,7 +50,7 @@ enum Side {
     Neither,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum EFormula {
     Const(Const),
     Variable(Variable),
@@ -385,7 +385,7 @@ impl Printable for EFormula {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Formula {
     f: EFormula,
 }

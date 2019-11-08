@@ -73,4 +73,10 @@ impl VariableBindings {
     pub fn get_signum(&self, v: &Variable) -> Option<&Variable> {
         self.signums.get(v)
     }
+
+    pub fn clear_bindings(&mut self) {
+        for (v, c) in self.bindings.iter_mut() {
+            *c = None
+        }
+    }
 }

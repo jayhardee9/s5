@@ -3,6 +3,8 @@ use solver::variables::Variable;
 use solver::formulas::Formula;
 use std::f64::consts::PI;
 use solver::solver_state::SolverState;
+use crate::conversions::*;
+use crate::constants::*;
 
 macro_rules! def_variable {
     ($const_name:ident, $var_name:expr, $description:expr) => {
@@ -96,6 +98,7 @@ pub fn run() {
 
     let mut state = SolverState::new();
     state.add_equations(&two_body_equations);
+    state.add_signum_for(phi, sgn_phi);
 
     println!("Problem 1.1");
 
@@ -115,4 +118,16 @@ pub fn run() {
     println!("{} = {}", h_y, state.get_binding(h_y).expect("h_y solved"));
     println!("{} = {}", h_z, state.get_binding(h_z).expect("h_z solved"));
     println!("{} = {}", me, state.get_binding(me).expect("me solved"));
+
+    println!("\nProblem 1.2");
+    state.clear_bindings();
+
+    state.bind_variable(v, &from_feet(45_000).into());
+    state.bind_variable(r, &from_nautical_miles(4_000).into());
+    state.bind_variable(p, &from_nautical_miles(4_000).into());
+    state.bind_variable(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
+
+    state.deduce();
+
+    println!("{} = {}", e, state.get_binding(e).expect("e solved"));
 }
