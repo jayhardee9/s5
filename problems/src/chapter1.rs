@@ -292,4 +292,18 @@ pub fn run() {
 
     let phi_degs = state.get_binding(phi).expect("phi solved").to_f64().to_degrees();
     println!("{} = {} deg", phi, phi_degs);
+
+    println!("\nProblem 1.11");
+    state.clear_bindings();
+
+    state.add_binding(v, &from_feet(10_000).into());
+    state.add_binding(r, &(from_feet(100_000) + EARTH_RADIUS).into());
+    state.add_binding(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
+    state.add_binding(phi, &(90f64.to_radians()).into());
+
+    state.deduce();
+
+    let radius_max = state.get_binding(r_a).expect("r_a solved").to_f64();
+    let alt_max = radius_max - EARTH_RADIUS;
+    println!("max altitude = {}", alt_max);
 }
