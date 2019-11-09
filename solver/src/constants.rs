@@ -21,7 +21,7 @@ impl Printable for EConst {
             },
         };
 
-        PrintUnits::new(vec![PrintUnit::new(s.as_str())])
+        PrintUnit::new(s.as_str()).into()
     }
 }
 

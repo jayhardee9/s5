@@ -88,6 +88,12 @@ impl PrintUnits {
     }
 }
 
+impl From<PrintUnit> for PrintUnits {
+    fn from(print_unit: PrintUnit) -> Self {
+        PrintUnits(vec![print_unit])
+    }
+}
+
 impl fmt::Display for PrintUnits {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         let mut sorted = self.0.clone();

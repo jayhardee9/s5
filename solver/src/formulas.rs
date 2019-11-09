@@ -340,7 +340,7 @@ impl From<i64> for EFormula {
 
 // Stores result in `operand1_units`
 fn simple_binop_print_units(binop_str: &str, operand1_units: &mut PrintUnits, operand2_units: &mut PrintUnits) {
-    let mut operator_units = PrintUnits::new(vec![PrintUnit::new(&format!(" {} ", binop_str))]);
+    let mut operator_units: PrintUnits = PrintUnit::new(&format!(" {} ", binop_str)).into();
     operator_units.right_of(&operand1_units);
     operand2_units.right_of(&operator_units);
     operand1_units.append(&operator_units);
@@ -413,11 +413,11 @@ impl Printable for EFormula {
                     Functions::Sgn => "sgn(",
                 };
                 let mut function_units1 =
-                    PrintUnits::new(vec![PrintUnit::new(function_part1)]);
+                    PrintUnit::new(function_part1).into();
 
-                let mut arg_units = argument.to_print_units();
+                let mut arg_units: PrintUnits = argument.to_print_units();
 
-                let mut function_units2 = PrintUnits::new(vec![PrintUnit::new(")")]);
+                let mut function_units2: PrintUnits = PrintUnit::new(")").into();
 
                 arg_units.right_of(&function_units1);
                 function_units2.right_of(&arg_units);
@@ -467,9 +467,9 @@ impl Formula {
 
     pub fn print_formulas3(f1: &Formula, f2: &Formula, f3: &Formula) {
         let mut f1_units = f1.f.to_print_units();
-        let mut eq1 = PrintUnits::new(vec![PrintUnit::new(" = ")]);
+        let mut eq1: PrintUnits = PrintUnit::new(" = ").into();
         let mut f2_units = f2.f.to_print_units();
-        let mut eq2 = PrintUnits::new(vec![PrintUnit::new(" = ")]);
+        let mut eq2: PrintUnits = eq1.clone();
         let mut f3_units = f3.f.to_print_units();
 
         eq1.right_of(&f1_units);
@@ -487,7 +487,7 @@ impl Formula {
 
     pub fn print_formulas2(f1: &Formula, f2: &Formula) {
         let mut f1_units = f1.f.to_print_units();
-        let mut eq = PrintUnits::new(vec![PrintUnit::new(" = ")]);
+        let mut eq: PrintUnits = PrintUnit::new(" = ").into();
         let mut f2_units = f2.f.to_print_units();
 
         eq.right_of(&f1_units);
