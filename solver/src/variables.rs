@@ -1,7 +1,7 @@
-use crate::display::{Printable, PrintUnit, PrintUnits};
 use crate::constants::Const;
+use crate::display::{PrintUnit, PrintUnits, Printable};
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Formatter, Error};
+use std::fmt::{Error, Formatter};
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Debug)]
 pub struct Variable {
@@ -59,9 +59,10 @@ impl VariableBindings {
     }
 
     pub fn bound(&self) -> HashSet<&Variable> {
-        self.bindings.keys().filter(|variable| {
-            self.bindings.get(*variable).unwrap().is_some()
-        }).collect()
+        self.bindings
+            .keys()
+            .filter(|variable| self.bindings.get(*variable).unwrap().is_some())
+            .collect()
     }
 
     // TODO automatically detect signum relationships

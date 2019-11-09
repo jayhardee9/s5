@@ -1,5 +1,5 @@
 use std::fmt;
-use std::fmt::{Formatter, Error};
+use std::fmt::{Error, Formatter};
 
 pub trait Printable {
     fn to_print_units(&self) -> PrintUnits;
@@ -45,32 +45,35 @@ impl PrintUnits {
     }
 
     fn min_x(&self) -> i64 {
-        self.0.iter()
+        self.0
+            .iter()
             .map(|print_unit| print_unit.x)
             .min()
             .unwrap_or(0)
     }
 
     fn max_x(&self) -> i64 {
-        self.0.iter()
+        self.0
+            .iter()
             .map(|print_unit| print_unit.x + print_unit.s.len() as i64 - 1)
             .max()
             .unwrap_or(0)
     }
 
     fn min_y(&self) -> i64 {
-        self.0.iter()
+        self.0
+            .iter()
             .map(|print_unit| print_unit.y)
             .min()
             .unwrap_or(0)
     }
 
     fn max_y(&self) -> i64 {
-        self.0.iter()
+        self.0
+            .iter()
             .map(|print_unit| print_unit.y)
             .max()
             .unwrap_or(0)
-
     }
 
     /// Shift units by `amount` places to the right.

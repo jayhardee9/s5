@@ -1,3 +1,8 @@
+use crate::constants::Const;
+use crate::display::{PrintUnit, PrintUnits, Printable};
+use crate::formulas::Side::{Both, Left, Neither, Right};
+use crate::formulas::SimplifyErr::{MissingInfo, NotFinite};
+use crate::formulas::SymbolicSolveErr::CantSolveYet;
 /// Formulas are expression that can evaluate to some value. Can be combined into an `Equation`.
 ///
 /// # Examples
@@ -12,18 +17,12 @@
 ///
 /// let f: Formula = s^2 / 2 - u / r;
 /// ```
-
 use crate::variables::{Variable, VariableBindings};
-use std::{ops, fmt};
-use std::ops::{Add, Sub, Div, Mul, BitXor};
-use crate::constants::Const;
-use crate::display::{Printable, PrintUnit, PrintUnits};
 use std::cmp::max;
-use std::fmt::{Formatter, Error};
 use std::collections::HashSet;
-use crate::formulas::Side::{Both, Right, Left, Neither};
-use crate::formulas::SimplifyErr::{MissingInfo, NotFinite};
-use crate::formulas::SymbolicSolveErr::CantSolveYet;
+use std::fmt::{Error, Formatter};
+use std::ops::{Add, BitXor, Div, Mul, Sub};
+use std::{fmt, ops};
 
 #[derive(Copy, Clone, Debug)]
 enum BinOps {
@@ -72,22 +71,18 @@ pub enum SymbolicSolveErr {
 }
 
 macro_rules! simplify_simple_binop {
-    ($op1:ident, $fn:ident, $op2:ident, $bindings:ident) => {
-        {
-            let operand1 = $op1.simplify(&$bindings)?;
-            let operand2 = $op2.simplify(&$bindings)?;
-            Ok(operand1.$fn(operand2))
-        }
-    };
+    ($op1:ident, $fn:ident, $op2:ident, $bindings:ident) => {{
+        let operand1 = $op1.simplify(&$bindings)?;
+        let operand2 = $op2.simplify(&$bindings)?;
+        Ok(operand1.$fn(operand2))
+    }};
 }
 
 macro_rules! simplify_function_call {
-    ($arg:ident, $fn:ident, $bindings:ident) => {
-        {
-            let arg = $arg.simplify($bindings)?;
-            Ok(Const::from(f64::from(arg).$fn()))
-        }
-    };
+    ($arg:ident, $fn:ident, $bindings:ident) => {{
+        let arg = $arg.simplify($bindings)?;
+        Ok(Const::from(f64::from(arg).$fn()))
+    }};
 }
 
 impl EFormula {
@@ -99,9 +94,7 @@ impl EFormula {
 
     fn variables(&self) -> HashSet<&Variable> {
         match self {
-            EFormula::Const(_) => {
-                HashSet::new()
-            }
+            EFormula::Const(_) => HashSet::new(),
 
             EFormula::Variable(v) => {
                 let mut rv = HashSet::new();
@@ -115,9 +108,7 @@ impl EFormula {
                 op1_vars
             }
 
-            EFormula::Function(_, arg) => {
-                arg.variables()
-            }
+            EFormula::Function(_, arg) => arg.variables(),
         }
     }
 
@@ -133,36 +124,32 @@ impl EFormula {
                 }
             }
 
-            EFormula::BinOp(operator, operand1, operand2) => {
-                match operator {
-                    BinOps::Add => simplify_simple_binop!(operand1, add, operand2, bindings),
+            EFormula::BinOp(operator, operand1, operand2) => match operator {
+                BinOps::Add => simplify_simple_binop!(operand1, add, operand2, bindings),
 
-                    BinOps::Subtract => simplify_simple_binop!(operand1, sub, operand2, bindings),
+                BinOps::Subtract => simplify_simple_binop!(operand1, sub, operand2, bindings),
 
-                    BinOps::Multiply => simplify_simple_binop!(operand1, mul, operand2, bindings),
+                BinOps::Multiply => simplify_simple_binop!(operand1, mul, operand2, bindings),
 
-                    BinOps::Divide => simplify_simple_binop!(operand1, div, operand2, bindings),
+                BinOps::Divide => simplify_simple_binop!(operand1, div, operand2, bindings),
 
-                    BinOps::Pow => simplify_simple_binop!(operand1, bitxor, operand2, bindings),
+                BinOps::Pow => simplify_simple_binop!(operand1, bitxor, operand2, bindings),
+            },
+
+            EFormula::Function(function, arg) => match function {
+                Functions::Sin => simplify_function_call!(arg, sin, bindings),
+
+                Functions::Cos => simplify_function_call!(arg, cos, bindings),
+
+                Functions::PosArccos => simplify_function_call!(arg, acos, bindings),
+
+                Functions::NegArccos => {
+                    let arg = arg.simplify(bindings)?;
+                    Ok(Const::from(-f64::from(arg).acos()))
                 }
-            }
 
-            EFormula::Function(function, arg) => {
-                match function {
-                    Functions::Sin => simplify_function_call!(arg, sin, bindings),
-
-                    Functions::Cos => simplify_function_call!(arg, cos, bindings),
-
-                    Functions::PosArccos => simplify_function_call!(arg, acos, bindings),
-
-                    Functions::NegArccos => {
-                        let arg = arg.simplify(bindings)?;
-                        Ok(Const::from(-f64::from(arg).acos()))
-                    }
-
-                    Functions::Sgn => simplify_function_call!(arg, signum, bindings)
-                }
-            }
+                Functions::Sgn => simplify_function_call!(arg, signum, bindings),
+            },
         };
 
         if let Ok(c) = rv {
@@ -192,7 +179,12 @@ impl EFormula {
         Neither
     }
 
-    fn solve(&self, rhs: &EFormula, solving_for: &Variable, bindings: &VariableBindings) -> Result<EFormula, SymbolicSolveErr> {
+    fn solve(
+        &self,
+        rhs: &EFormula,
+        solving_for: &Variable,
+        bindings: &VariableBindings,
+    ) -> Result<EFormula, SymbolicSolveErr> {
         if !self.variables().contains(solving_for) && !rhs.variables().contains(solving_for) {
             return Err(SymbolicSolveErr::TargetVariableAbsent);
         }
@@ -210,124 +202,96 @@ impl EFormula {
                 } else {
                     unreachable!()
                 }
-            },
+            }
 
             EFormula::BinOp(operator, op_lhs, op_rhs) => {
                 let side = op_lhs.side(op_rhs, solving_for);
 
                 match operator {
-                    BinOps::Add => {
-                        match side {
-                            Left => {
-                                op_lhs.solve(&(rhs - op_rhs), solving_for, bindings)
-                            },
+                    BinOps::Add => match side {
+                        Left => op_lhs.solve(&(rhs - op_rhs), solving_for, bindings),
 
-                            Right => {
-                                op_rhs.solve(&(rhs - op_lhs), solving_for, bindings)
-                            },
+                        Right => op_rhs.solve(&(rhs - op_lhs), solving_for, bindings),
 
-                            Both => Err(CantSolveYet),
+                        Both => Err(CantSolveYet),
 
-                            Neither => unreachable!(),
-                        }
+                        Neither => unreachable!(),
                     },
 
-                    BinOps::Subtract => {
-                        match side {
-                            Left => {
-                                op_lhs.solve(&(rhs + op_rhs), solving_for, bindings)
-                            },
+                    BinOps::Subtract => match side {
+                        Left => op_lhs.solve(&(rhs + op_rhs), solving_for, bindings),
 
-                            Right => {
-                                op_rhs.solve(&(op_lhs - rhs), solving_for, bindings)
-                            },
+                        Right => op_rhs.solve(&(op_lhs - rhs), solving_for, bindings),
 
-                            Both => Err(CantSolveYet),
+                        Both => Err(CantSolveYet),
 
-                            Neither => unreachable!(),
-                        }
+                        Neither => unreachable!(),
                     },
 
-                    BinOps::Multiply => {
-                        match side {
-                            Left => {
-                                op_lhs.solve(&(rhs / op_rhs), solving_for, bindings)
-                            },
+                    BinOps::Multiply => match side {
+                        Left => op_lhs.solve(&(rhs / op_rhs), solving_for, bindings),
 
-                            Right => {
-                                op_rhs.solve(&(rhs / op_lhs), solving_for, bindings)
-                            },
+                        Right => op_rhs.solve(&(rhs / op_lhs), solving_for, bindings),
 
-                            Both => Err(CantSolveYet),
+                        Both => Err(CantSolveYet),
 
-                            Neither => unreachable!(),
-                        }
+                        Neither => unreachable!(),
                     },
 
-                    BinOps::Divide => {
-                        match side {
-                            Left => {
-                                op_lhs.solve(&(rhs * op_rhs), solving_for, bindings)
-                            },
+                    BinOps::Divide => match side {
+                        Left => op_lhs.solve(&(rhs * op_rhs), solving_for, bindings),
 
-                            Right => {
-                                op_rhs.solve(&(op_lhs / rhs), solving_for, bindings)
-                            },
+                        Right => op_rhs.solve(&(op_lhs / rhs), solving_for, bindings),
 
-                            Both => Err(CantSolveYet),
+                        Both => Err(CantSolveYet),
 
-                            Neither => unreachable!(),
-                        }
+                        Neither => unreachable!(),
                     },
 
                     BinOps::Pow => {
                         let exponent = &Box::new(op_rhs.invert());
-                        op_lhs.solve(&(rhs^exponent), solving_for, bindings)
-                    },
-                }
-            },
-
-            EFormula::Function(function, arg) => {
-                match function {
-                    Functions::Cos => {
-                        match arg.as_ref() {
-                            EFormula::Variable(v) => {
-                                if v != solving_for {
-                                    unreachable!()
-                                }
-
-                                let sgn_v = if let Some(v) = bindings.get_signum(v) {
-                                    v
-                                } else {
-                                    return Err(SymbolicSolveErr::MissingSignum);
-                                };
-
-                                let sgn_v_val = if let Some(c) = bindings.get(sgn_v) {
-                                    c
-                                } else {
-                                    return Err(SymbolicSolveErr::SignumValMissing);
-                                };
-
-                                let new_rhs = if sgn_v_val.is_one() {
-                                    EFormula::Function(Functions::PosArccos, Box::new(rhs.clone()))
-                                } else if sgn_v_val.is_zero() {
-                                    0.into()
-                                } else if sgn_v_val.is_minus_one() {
-                                    EFormula::Function(Functions::NegArccos, Box::new(rhs.clone()))
-                                } else {
-                                    return Err(SymbolicSolveErr::SignumOutOfRange);
-                                };
-
-                                arg.solve(&new_rhs, solving_for, bindings)
-                            }
-
-                            _ => Err(SymbolicSolveErr::CantSolveYet)
-                        }
+                        op_lhs.solve(&(rhs ^ exponent), solving_for, bindings)
                     }
-
-                    _ => Err(SymbolicSolveErr::CantSolveYet)
                 }
             }
+
+            EFormula::Function(function, arg) => match function {
+                Functions::Cos => match arg.as_ref() {
+                    EFormula::Variable(v) => {
+                        if v != solving_for {
+                            unreachable!()
+                        }
+
+                        let sgn_v = if let Some(v) = bindings.get_signum(v) {
+                            v
+                        } else {
+                            return Err(SymbolicSolveErr::MissingSignum);
+                        };
+
+                        let sgn_v_val = if let Some(c) = bindings.get(sgn_v) {
+                            c
+                        } else {
+                            return Err(SymbolicSolveErr::SignumValMissing);
+                        };
+
+                        let new_rhs = if sgn_v_val.is_one() {
+                            EFormula::Function(Functions::PosArccos, Box::new(rhs.clone()))
+                        } else if sgn_v_val.is_zero() {
+                            0.into()
+                        } else if sgn_v_val.is_minus_one() {
+                            EFormula::Function(Functions::NegArccos, Box::new(rhs.clone()))
+                        } else {
+                            return Err(SymbolicSolveErr::SignumOutOfRange);
+                        };
+
+                        arg.solve(&new_rhs, solving_for, bindings)
+                    }
+
+                    _ => Err(SymbolicSolveErr::CantSolveYet),
+                },
+
+                _ => Err(SymbolicSolveErr::CantSolveYet),
+            },
         }
     }
 }
@@ -339,7 +303,11 @@ impl From<i64> for EFormula {
 }
 
 // Stores result in `operand1_units`
-fn simple_binop_print_units(binop_str: &str, operand1_units: &mut PrintUnits, operand2_units: &mut PrintUnits) {
+fn simple_binop_print_units(
+    binop_str: &str,
+    operand1_units: &mut PrintUnits,
+    operand2_units: &mut PrintUnits,
+) {
     let mut operator_units: PrintUnits = PrintUnit::new(&format!(" {} ", binop_str)).into();
     operator_units.right_of(&operand1_units);
     operand2_units.right_of(&operator_units);
@@ -350,13 +318,9 @@ fn simple_binop_print_units(binop_str: &str, operand1_units: &mut PrintUnits, op
 impl Printable for EFormula {
     fn to_print_units(&self) -> PrintUnits {
         match self {
-            EFormula::Const(c) => {
-                c.to_print_units()
-            }
+            EFormula::Const(c) => c.to_print_units(),
 
-            EFormula::Variable(v) => {
-                v.to_print_units()
-            }
+            EFormula::Variable(v) => v.to_print_units(),
 
             EFormula::BinOp(operator, operand1, operand2) => {
                 let mut operand1_units = operand1.to_print_units();
@@ -381,7 +345,8 @@ impl Printable for EFormula {
                     BinOps::Divide => {
                         let bar_length = max(operand1_units.width(), operand2_units.width());
                         let div_bar = str::repeat("-", bar_length);
-                        let operator_units = PrintUnits::new(vec![PrintUnit::new(&format!(" {} ", div_bar))]);
+                        let operator_units =
+                            PrintUnits::new(vec![PrintUnit::new(&format!(" {} ", div_bar))]);
                         operand1_units.shift_right(1);
                         operand2_units.shift_right(1);
                         operand2_units.below(&operator_units);
@@ -412,8 +377,7 @@ impl Printable for EFormula {
 
                     Functions::Sgn => "sgn(",
                 };
-                let mut function_units1 =
-                    PrintUnit::new(function_part1).into();
+                let mut function_units1 = PrintUnit::new(function_part1).into();
 
                 let mut arg_units: PrintUnits = argument.to_print_units();
 
@@ -459,9 +423,14 @@ impl Formula {
         self.f.simplify(bindings)
     }
 
-    pub fn solve(&self, rhs: &Formula, solving_for: &Variable, bindings: &VariableBindings) -> Result<Formula, SymbolicSolveErr> {
+    pub fn solve(
+        &self,
+        rhs: &Formula,
+        solving_for: &Variable,
+        bindings: &VariableBindings,
+    ) -> Result<Formula, SymbolicSolveErr> {
         Ok(Formula {
-            f: self.f.solve(&rhs.f, solving_for, bindings)?
+            f: self.f.solve(&rhs.f, solving_for, bindings)?,
         })
     }
 

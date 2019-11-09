@@ -1,6 +1,6 @@
+use crate::display::{PrintUnit, PrintUnits, Printable};
+use std::fmt::{Error, Formatter};
 use std::ops;
-use crate::display::{Printable, PrintUnit, PrintUnits};
-use std::fmt::{Formatter, Error};
 
 #[derive(Copy, Clone, PartialOrd, PartialEq, Debug)]
 enum EConst {
@@ -12,13 +12,9 @@ enum EConst {
 impl Printable for EConst {
     fn to_print_units(&self) -> PrintUnits {
         let s = match self {
-            EConst::IntConst(i) => {
-                i.to_string()
-            },
+            EConst::IntConst(i) => i.to_string(),
 
-            EConst::FloatConst(f) => {
-                f.to_string()
-            },
+            EConst::FloatConst(f) => f.to_string(),
         };
 
         PrintUnit::new(s.as_str()).into()
@@ -181,28 +177,20 @@ impl ops::Div<Const> for Const {
 
     fn div(self, rhs: Const) -> Self::Output {
         match (self.c, rhs.c) {
-            (EConst::IntConst(i1), EConst::IntConst(i2)) => {
-                Const {
-                    c: EConst::FloatConst((i1 as f64).div(i2 as f64)),
-                }
+            (EConst::IntConst(i1), EConst::IntConst(i2)) => Const {
+                c: EConst::FloatConst((i1 as f64).div(i2 as f64)),
             },
 
-            (EConst::IntConst(i), EConst::FloatConst(f)) => {
-                Const {
-                    c: EConst::FloatConst((i as f64).div(f)),
-                }
+            (EConst::IntConst(i), EConst::FloatConst(f)) => Const {
+                c: EConst::FloatConst((i as f64).div(f)),
             },
 
-            (EConst::FloatConst(f), EConst::IntConst(i)) => {
-                Const {
-                    c: EConst::FloatConst(f.div(i as f64)),
-                }
+            (EConst::FloatConst(f), EConst::IntConst(i)) => Const {
+                c: EConst::FloatConst(f.div(i as f64)),
             },
 
-            (EConst::FloatConst(f1), EConst::FloatConst(f2)) => {
-                Const {
-                    c: EConst::FloatConst(f1.div(f2)),
-                }
+            (EConst::FloatConst(f1), EConst::FloatConst(f2)) => Const {
+                c: EConst::FloatConst(f1.div(f2)),
             },
         }
     }
@@ -256,12 +244,10 @@ impl ops::BitXor<i64> for Const {
                         c: EConst::IntConst(i.pow(rhs as u32)),
                     }
                 }
-            },
+            }
 
-            EConst::FloatConst(f) => {
-                Const {
-                    c: EConst::FloatConst(f.powi(rhs as i32)),
-                }
+            EConst::FloatConst(f) => Const {
+                c: EConst::FloatConst(f.powi(rhs as i32)),
             },
         }
     }
@@ -282,12 +268,10 @@ impl ops::BitXor<Const> for i64 {
                         c: EConst::IntConst(self.pow(i as u32)),
                     }
                 }
-            },
+            }
 
-            EConst::FloatConst(f) => {
-                Const {
-                    c: EConst::FloatConst((self as f64).powf(f)),
-                }
+            EConst::FloatConst(f) => Const {
+                c: EConst::FloatConst((self as f64).powf(f)),
             },
         }
     }
@@ -308,24 +292,18 @@ impl ops::BitXor<Const> for Const {
                         c: EConst::IntConst(i1.pow(i2 as u32)),
                     }
                 }
+            }
+
+            (EConst::IntConst(i), EConst::FloatConst(f)) => Const {
+                c: EConst::FloatConst((i as f64).powf(f)),
             },
 
-            (EConst::IntConst(i), EConst::FloatConst(f)) => {
-                Const {
-                    c: EConst::FloatConst((i as f64).powf(f)),
-                }
+            (EConst::FloatConst(f), EConst::IntConst(i)) => Const {
+                c: EConst::FloatConst(f.powf(i as f64)),
             },
 
-            (EConst::FloatConst(f), EConst::IntConst(i)) => {
-                Const {
-                    c: EConst::FloatConst(f.powf(i as f64)),
-                }
-            },
-
-            (EConst::FloatConst(f1), EConst::FloatConst(f2)) => {
-                Const {
-                    c: EConst::FloatConst(f1.powf(f2)),
-                }
+            (EConst::FloatConst(f1), EConst::FloatConst(f2)) => Const {
+                c: EConst::FloatConst(f1.powf(f2)),
             },
         }
     }
@@ -336,16 +314,12 @@ impl ops::BitXor<f64> for Const {
 
     fn bitxor(self, rhs: f64) -> Const {
         match self.c {
-            EConst::IntConst(i) => {
-                Const {
-                    c: EConst::FloatConst((i as f64).powf(rhs)),
-                }
+            EConst::IntConst(i) => Const {
+                c: EConst::FloatConst((i as f64).powf(rhs)),
             },
 
-            EConst::FloatConst(f) => {
-                Const {
-                    c: EConst::FloatConst(f.powf(rhs)),
-                }
+            EConst::FloatConst(f) => Const {
+                c: EConst::FloatConst(f.powf(rhs)),
             },
         }
     }
@@ -356,16 +330,12 @@ impl ops::BitXor<Const> for f64 {
 
     fn bitxor(self, rhs: Const) -> Const {
         match rhs.c {
-            EConst::IntConst(i) => {
-                Const {
-                    c: EConst::FloatConst(self.powf(i as f64)),
-                }
+            EConst::IntConst(i) => Const {
+                c: EConst::FloatConst(self.powf(i as f64)),
             },
 
-            EConst::FloatConst(f) => {
-                Const {
-                    c: EConst::FloatConst(self.powf(f)),
-                }
+            EConst::FloatConst(f) => Const {
+                c: EConst::FloatConst(self.powf(f)),
             },
         }
     }

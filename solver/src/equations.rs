@@ -10,10 +10,7 @@ pub struct Equation {
 
 impl Equation {
     pub fn new(left: Formula, right: Formula) -> Equation {
-        Equation {
-            left,
-            right,
-        }
+        Equation { left, right }
     }
 
     pub fn new_assignment(left: &Variable, right: Formula) -> Equation {
