@@ -1,9 +1,7 @@
-use std::collections::HashMap;
 use crate::variables::{Variable, VariableBindings};
 use crate::constants::Const;
 use crate::equations::Equation;
 use crate::formulas::{Formula, SimplifyErr, SymbolicSolveErr};
-use std::ptr::eq;
 
 #[derive(Debug)]
 struct SolverEquation {

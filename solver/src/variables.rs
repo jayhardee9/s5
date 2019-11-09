@@ -1,7 +1,6 @@
 use crate::display::{Printable, PrintUnit, PrintUnits};
 use crate::constants::Const;
 use std::collections::{HashMap, HashSet};
-use std::fmt;
 use std::fmt::{Formatter, Error};
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Debug)]
@@ -75,7 +74,7 @@ impl VariableBindings {
     }
 
     pub fn clear_bindings(&mut self) {
-        for (v, c) in self.bindings.iter_mut() {
+        for (_, c) in self.bindings.iter_mut() {
             *c = None
         }
     }

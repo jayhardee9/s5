@@ -267,7 +267,7 @@ pub fn run() {
 
     state.add_binding(v, &from_feet(25_000).into());
     state.add_binding(r, &(from_feet(300_000) + EARTH_RADIUS).into());
-    state.add_binding(phi, &(-60f64.to_radians()).into());
+    state.add_binding(phi, &((-60f64).to_radians()).into());
     state.add_binding(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
 
     state.deduce();

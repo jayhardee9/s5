@@ -120,7 +120,7 @@ impl fmt::Display for PrintUnits {
             }
 
             while cur_y < print_unit.y {
-                writeln!(f, "")?;
+                writeln!(f)?;
                 cur_y += 1;
             }
 

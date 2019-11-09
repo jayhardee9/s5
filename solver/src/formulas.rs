@@ -21,11 +21,8 @@ use crate::display::{Printable, PrintUnit, PrintUnits};
 use std::cmp::max;
 use std::fmt::{Formatter, Error};
 use std::collections::HashSet;
-use crate::formulas::Functions::PosArccos;
 use crate::formulas::Side::{Both, Right, Left, Neither};
-use crate::formulas::EFormula::BinOp;
 use crate::formulas::SimplifyErr::{MissingInfo, NotFinite};
-use std::hint::unreachable_unchecked;
 use crate::formulas::SymbolicSolveErr::CantSolveYet;
 
 #[derive(Copy, Clone, Debug)]
@@ -520,7 +517,7 @@ impl Formula {
 impl fmt::Display for Formula {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         let units = self.f.to_print_units();
-        writeln!(f, "")?;
+        writeln!(f)?;
         units.fmt(f)
     }
 }
