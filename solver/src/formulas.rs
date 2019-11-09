@@ -707,30 +707,6 @@ macro_rules! formula_op {
                 EFormula::BinOp($($bin_op_ty)::+, self.clone(), Box::new(rhs.clone()))
             }
         }
-
-        impl $($trait)::+<Box<EFormula>> for Box<EFormula> {
-            type Output = EFormula;
-
-            fn $fn(self, rhs: Box<EFormula>) -> Self::Output {
-                EFormula::BinOp($($bin_op_ty)::+, self, rhs)
-            }
-        }
-
-        impl $($trait)::+<&Box<EFormula>> for Box<EFormula> {
-            type Output = EFormula;
-
-            fn $fn(self, rhs: &Box<EFormula>) -> Self::Output {
-                EFormula::BinOp($($bin_op_ty)::+, self, rhs.clone())
-            }
-        }
-
-        impl $($trait)::+<Box<EFormula>> for &Box<EFormula> {
-            type Output = EFormula;
-
-            fn $fn(self, rhs: Box<EFormula>) -> Self::Output {
-                EFormula::BinOp($($bin_op_ty)::+, self.clone(), rhs)
-            }
-        }
     };
 }
 
