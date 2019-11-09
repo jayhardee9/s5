@@ -1,3 +1,6 @@
+//! Constants
+//!
+//! Represent integer and floating-point values/
 use crate::display::{PrintUnit, PrintUnits, Printable};
 use std::fmt::{Error, Formatter};
 use std::ops;
@@ -21,12 +24,14 @@ impl Printable for EConst {
     }
 }
 
+/// Type for representing an integer or floating-point value.
 #[derive(Copy, Clone, Debug)]
 pub struct Const {
     c: EConst,
 }
 
 impl Const {
+    /// Return true if self is an integer value equal to 1.
     pub fn is_one(&self) -> bool {
         match self.c {
             EConst::IntConst(n) => n == 1,
@@ -34,6 +39,7 @@ impl Const {
         }
     }
 
+    /// Return true if self is an integer value equal to -1.
     pub fn is_minus_one(&self) -> bool {
         match self.c {
             EConst::IntConst(n) => n == -1,
@@ -41,6 +47,7 @@ impl Const {
         }
     }
 
+    /// Return true if self is an integer value equal to 0.
     pub fn is_zero(&self) -> bool {
         match self.c {
             EConst::IntConst(n) => n == 0,
@@ -48,6 +55,7 @@ impl Const {
         }
     }
 
+    /// Return true if self is a finite value.
     pub fn is_finite(&self) -> bool {
         match self.c {
             EConst::IntConst(_) => true,
@@ -55,6 +63,7 @@ impl Const {
         }
     }
 
+    /// Convert to a raw floating-point value.
     pub fn to_f64(&self) -> f64 {
         match self.c {
             EConst::IntConst(n) => n as f64,
@@ -100,6 +109,7 @@ impl From<Const> for f64 {
     }
 }
 
+// helper macro for overloading operators between `Const` and other types
 macro_rules! const_op {
     ($($trait:ident)::+, $fn:ident) => {
         impl $($trait)::+<Const> for Const {
@@ -168,16 +178,20 @@ macro_rules! const_op {
     };
 }
 
+// Overload operators between `Const` and other types.
 const_op!(ops::Add, add);
 const_op!(ops::Sub, sub);
 const_op!(ops::Mul, mul);
 
+// Implement division between `Const` and other types manually due to some extra logic.
 impl ops::Div<Const> for Const {
     type Output = Const;
 
     fn div(self, rhs: Const) -> Self::Output {
         match (self.c, rhs.c) {
             (EConst::IntConst(i1), EConst::IntConst(i2)) => Const {
+                // The aforementioned special logic: when dividing integers, we want a floating-
+                // point value. Mathematically, `1/2 != 0`!
                 c: EConst::FloatConst((i1 as f64).div(i2 as f64)),
             },
 
@@ -229,6 +243,8 @@ impl ops::Div<Const> for f64 {
 }
 
 // Using the ^ for exponents
+// Implement exponentiation manually because we need to use different exponentiation methods
+// depending on the types (int or float) involved.
 impl ops::BitXor<i64> for Const {
     type Output = Const;
 

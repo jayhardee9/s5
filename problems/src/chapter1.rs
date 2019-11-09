@@ -216,9 +216,9 @@ pub fn run() {
 
     print!("\n(a) ");
 
-    state.add_binding(r, &3.into());
-    state.add_binding(v, &1.5.into());
-    state.add_binding(u, &1.into());
+    state.bind_variable(r, &3.into());
+    state.bind_variable(v, &1.5.into());
+    state.bind_variable(u, &1.into());
 
     state.deduce();
 
@@ -231,9 +231,9 @@ pub fn run() {
     print!("\n(b) ");
     state.clear_bindings();
 
-    state.add_binding(r_p, &1.5.into());
-    state.add_binding(p, &3.into());
-    state.add_binding(u, &1.into());
+    state.bind_variable(r_p, &1.5.into());
+    state.bind_variable(p, &3.into());
+    state.bind_variable(u, &1.into());
 
     state.deduce();
 
@@ -245,9 +245,9 @@ pub fn run() {
     print!("\n(c) ");
     state.clear_bindings();
 
-    state.add_binding(me, &(-1.0 / 3.0).into());
-    state.add_binding(p, &1.5.into());
-    state.add_binding(u, &1.into());
+    state.bind_variable(me, &(-1.0 / 3.0).into());
+    state.bind_variable(p, &1.5.into());
+    state.bind_variable(u, &1.into());
 
     state.deduce();
 
@@ -259,15 +259,15 @@ pub fn run() {
     print!("\n(d) ");
     state.clear_bindings();
 
-    state.add_binding(r_x, &0.into());
-    state.add_binding(r_y, &1.into());
-    state.add_binding(r_z, &0.2.into());
+    state.bind_variable(r_x, &0.into());
+    state.bind_variable(r_y, &1.into());
+    state.bind_variable(r_z, &0.2.into());
 
-    state.add_binding(v_x, &0.9.into());
-    state.add_binding(v_y, &0.into());
-    state.add_binding(v_z, &0.123.into());
+    state.bind_variable(v_x, &0.9.into());
+    state.bind_variable(v_y, &0.into());
+    state.bind_variable(v_z, &0.123.into());
 
-    state.add_binding(u, &1.into());
+    state.bind_variable(u, &1.into());
 
     state.deduce();
 
@@ -279,15 +279,15 @@ pub fn run() {
     print!("\n(e) ");
     state.clear_bindings();
 
-    state.add_binding(r_x, &0.into());
-    state.add_binding(r_y, &0.into());
-    state.add_binding(r_z, &1.01.into());
+    state.bind_variable(r_x, &0.into());
+    state.bind_variable(r_y, &0.into());
+    state.bind_variable(r_z, &1.01.into());
 
-    state.add_binding(v_x, &1.into());
-    state.add_binding(v_y, &0.into());
-    state.add_binding(v_z, &1.4.into());
+    state.bind_variable(v_x, &1.into());
+    state.bind_variable(v_y, &0.into());
+    state.bind_variable(v_z, &1.4.into());
 
-    state.add_binding(u, &1.into());
+    state.bind_variable(u, &1.into());
 
     state.deduce();
 
@@ -299,10 +299,10 @@ pub fn run() {
     println!("\nProblem 1.9");
     state.clear_bindings();
 
-    state.add_binding(v, &from_feet(25_000).into());
-    state.add_binding(r, &(from_feet(300_000) + EARTH_RADIUS).into());
-    state.add_binding(phi, &((-60f64).to_radians()).into());
-    state.add_binding(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
+    state.bind_variable(v, &from_feet(25_000).into());
+    state.bind_variable(r, &(from_feet(300_000) + EARTH_RADIUS).into());
+    state.bind_variable(phi, &((-60f64).to_radians()).into());
+    state.bind_variable(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
 
     state.deduce();
 
@@ -311,13 +311,13 @@ pub fn run() {
 
     state.clear_bindings();
 
-    state.add_binding(e, &eccentricity);
-    state.add_binding(h, &specific_angular_momentum);
-    state.add_binding(r, &(from_nautical_miles(100) as f64 + EARTH_RADIUS).into());
-    state.add_binding(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
+    state.bind_variable(e, &eccentricity);
+    state.bind_variable(h, &specific_angular_momentum);
+    state.bind_variable(r, &(from_nautical_miles(100) as f64 + EARTH_RADIUS).into());
+    state.bind_variable(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
 
     let n_one = -1i64;
-    state.add_binding(sgn_phi, &n_one.into());
+    state.bind_variable(sgn_phi, &n_one.into());
 
     state.deduce();
 
@@ -334,10 +334,10 @@ pub fn run() {
     println!("\nProblem 1.11");
     state.clear_bindings();
 
-    state.add_binding(v, &from_feet(10_000).into());
-    state.add_binding(r, &(from_feet(100_000) + EARTH_RADIUS).into());
-    state.add_binding(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
-    state.add_binding(phi, &(90f64.to_radians()).into());
+    state.bind_variable(v, &from_feet(10_000).into());
+    state.bind_variable(r, &(from_feet(100_000) + EARTH_RADIUS).into());
+    state.bind_variable(u, &EARTH_GRAVITATIONAL_PARAMETER.into());
+    state.bind_variable(phi, &(90f64.to_radians()).into());
 
     state.deduce();
 

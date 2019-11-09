@@ -1,26 +1,36 @@
+//! Solver
+//!
+//! This module implements the solver.
 use crate::constants::Const;
 use crate::equations::Equation;
 use crate::formulas::{Formula, SimplifyErr, SymbolicSolveErr};
 use crate::variables::{Variable, VariableBindings};
 
+// Internal equation for the solver.
 #[derive(Debug)]
 struct SolverEquation {
+    // True if equation has already been solved
     used: bool,
+
     equation: Equation,
 }
 
+/// The solver type.
 #[derive(Default, Debug)]
 pub struct SolverState {
     equations: Vec<SolverEquation>,
-    pub bindings: VariableBindings,
+    bindings: VariableBindings,
 }
 
 impl SolverState {
+    /// Create a new solver
     pub fn new() -> SolverState {
         Default::default()
     }
 
+    /// Add a slice of equations to the solver.
     pub fn add_equations(&mut self, equations: &[Equation]) {
+        // Convert to internal equation representation
         self.equations = equations
             .iter()
             .map(|equation| SolverEquation {
@@ -37,18 +47,17 @@ impl SolverState {
         }
     }
 
-    pub fn add_variable(&mut self, variable: &Variable) {
-        self.bindings.add(variable)
-    }
-
+    /// Bind a value to a variable
     pub fn bind_variable(&mut self, variable: &Variable, c: &Const) {
         self.bindings.bind(variable, c)
     }
 
+    /// Assert that `sgn_v = sgn(v)`. This is needed for solving equations involving trig functions.
     pub fn add_signum_for(&mut self, v: &Variable, sgn_v: &Variable) {
         self.bindings.add_signum_for(v, sgn_v);
     }
 
+    /// Deduce all possible variable assignments
     pub fn deduce(&mut self) {
         let mut finished = false;
         while !finished {
@@ -123,6 +132,7 @@ impl SolverState {
         }
     }
 
+    // Solve for a single variable.
     fn symbolic_solve(
         solving_for: &Variable,
         equation: &Equation,
@@ -131,18 +141,12 @@ impl SolverState {
         equation.left.solve(&equation.right, solving_for, bindings)
     }
 
-    pub fn add_binding(&mut self, var: &Variable, val: &Const) {
-        self.bindings.bind(var, val)
-    }
-
-    pub fn remove_binding(&mut self, var: &Variable) {
-        self.bindings.unbind(var)
-    }
-
+    /// Return value assigned to variable. Returns `None` if variable value could be deduced.
     pub fn get_binding(&self, var: &Variable) -> Option<Const> {
         self.bindings.get(var)
     }
 
+    /// Remove all variable assignments and reset solver state.
     pub fn clear_bindings(&mut self) {
         self.bindings.clear_bindings();
 
