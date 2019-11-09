@@ -434,36 +434,22 @@ pub struct Formula {
     f: EFormula,
 }
 
+macro_rules! func_formula_meth {
+    ($method:ident, $($variant:ident)::+) => {
+        pub fn $method(&self) -> Formula {
+            Formula {
+                f: EFormula::Function($($variant)::+, self.f.clone().into()),
+            }
+        }
+    };
+}
+
 impl Formula {
-    pub fn sin(&self) -> Formula {
-        Formula {
-            f: EFormula::Function(Functions::Sin, self.f.clone().into()),
-        }
-    }
-
-    pub fn cos(&self) -> Formula {
-        Formula {
-            f: EFormula::Function(Functions::Cos, self.f.clone().into()),
-        }
-    }
-
-    pub fn pos_acos(&self) -> Formula {
-        Formula {
-            f: EFormula::Function(Functions::PosArccos, self.f.clone().into()),
-        }
-    }
-
-    pub fn neg_acos(&self) -> Formula {
-        Formula {
-            f: EFormula::Function(Functions::NegArccos, self.f.clone().into()),
-        }
-    }
-
-    pub fn sgn(&self) -> Formula {
-        Formula {
-            f: EFormula::Function(Functions::Sgn, self.f.clone().into()),
-        }
-    }
+    func_formula_meth!(sin, Functions::Sin);
+    func_formula_meth!(cos, Functions::Cos);
+    func_formula_meth!(pos_acos, Functions::PosArccos);
+    func_formula_meth!(neg_acos, Functions::NegArccos);
+    func_formula_meth!(sgn, Functions::Sgn);
 
     pub fn variables(&self) -> HashSet<&Variable> {
         self.f.variables()
