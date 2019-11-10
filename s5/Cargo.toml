@@ -5,6 +5,7 @@ authors = ["Jerry Hardee <hardeejj9@gmail.com>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/jayhardee9/s5"
+description = "Simple equation solver written in Rust, built for solving some homework-style problems in orbital mechanics"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
