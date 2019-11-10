@@ -1,0 +1,18 @@
+language: rust
+env:
+  global:
+    - RUST_BACKTRACE=1
+before_script:
+  - rustup component add clippy rustfmt
+script:
+  - cargo fmt --all -- --check
+  - cargo build --verbose
+  - cargo clippy
+  - cargo test  --verbose
+  - cargo doc --verbose
+branches:
+  only:
+    - staging # bors r+
+    - trying  # bors try
+    - master
+cache: cargo
