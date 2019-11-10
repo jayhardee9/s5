@@ -10,6 +10,15 @@ equation with exactly one unknown variable, solving for it in terms
 of the knowns, and finally calculating the solution (hence the term
 "substitution" in the name).
 
+## Organization
+This repo is a Rust workspace comprising of two crates:
+* `s5` - the solver library
+* `problems` - a crate using `s5` as a dependency to solve problems
+in the text _Fundamentals of Astrodynamics_.  
+
+The `s3` crate is what your project would use; `problems` is just an example
+crate and is not required to use S<sup>5</sup>.
+
 ## Installation
 The solver is distributed as a Rust library and can be added to any
 Rust project by adding this to `Cargo.toml`:

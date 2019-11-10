@@ -78,7 +78,7 @@ pub enum SymbolicSolveErr {
     /// Found a signum that's not an integer equal to -1, 0 or 1
     SignumOutOfRange,
 
-    /// This is a _simple_ solver. Some things are presently out of scope.
+    /// This is a _simple_ s5. Some things are presently out of scope.
     CantSolveYet,
 
     /// A variable equal to the signum of the variable being solved for is not present in bindings

@@ -1,12 +1,12 @@
 //! Solver
 //!
-//! This module implements the solver.
+//! This module implements the s5.
 use crate::constants::Const;
 use crate::equations::Equation;
 use crate::formulas::{Formula, SimplifyErr, SymbolicSolveErr};
 use crate::variables::{Variable, VariableBindings};
 
-// Internal equation for the solver.
+// Internal equation for the s5.
 #[derive(Debug)]
 struct SolverEquation {
     // True if equation has already been solved
@@ -15,7 +15,7 @@ struct SolverEquation {
     equation: Equation,
 }
 
-/// The solver type.
+/// The s5 type.
 #[derive(Default, Debug)]
 pub struct SolverState {
     equations: Vec<SolverEquation>,
@@ -23,12 +23,12 @@ pub struct SolverState {
 }
 
 impl SolverState {
-    /// Create a new solver
+    /// Create a new s5
     pub fn new() -> SolverState {
         Default::default()
     }
 
-    /// Add a slice of equations to the solver.
+    /// Add a slice of equations to the s5.
     pub fn add_equations(&mut self, equations: &[Equation]) {
         // Convert to internal equation representation
         self.equations = equations
@@ -146,7 +146,7 @@ impl SolverState {
         self.bindings.get(var)
     }
 
-    /// Remove all variable assignments and reset solver state.
+    /// Remove all variable assignments and reset s5 state.
     pub fn clear_bindings(&mut self) {
         self.bindings.clear_bindings();
 

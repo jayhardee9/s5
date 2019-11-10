@@ -26,11 +26,11 @@ name = "problems"
 version = "0.1.0"
 dependencies = [
  "float-cmp 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "solver 0.1.0",
+ "s5 0.1.0",
 ]
 
 [[package]]
-name = "solver"
+name = "s5"
 version = "0.1.0"
 
 [metadata]

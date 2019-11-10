@@ -1,6 +1,6 @@
 //! Equations
 //!
-//! Combine two `Formula`s into an `Equation`! Use them to model something and use the solver to
+//! Combine two `Formula`s into an `Equation`! Use them to model something and use the s5 to
 //! solve for the unknowns.
 use crate::formulas::Formula;
 use crate::variables::Variable;

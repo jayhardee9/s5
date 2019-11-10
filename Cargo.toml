@@ -2,6 +2,6 @@
 
 members = [
     "problems",
-    "solver",
+    "s5",
 ]
 

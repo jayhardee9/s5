@@ -5,5 +5,5 @@ authors = ["Jerry Hardee <hardeejj9@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-solver = { path = "../solver" }
+s5 = { path = "../s5" }
 float-cmp = "0.5.3"
