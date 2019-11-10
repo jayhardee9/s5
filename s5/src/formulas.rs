@@ -4,8 +4,8 @@
 //!
 //! # Examples
 //! ```
-//! use solver::formulas::*;
-//! use solver::variables::*;
+//! use s5::formulas::*;
+//! use s5::variables::*;
 //!
 //! let s = Variable::new("s", "speed of satellite");
 //! let me = Variable::new("E", "specific mechanical energy of orbit");

@@ -1,10 +1,10 @@
 use crate::chapter1::OrbitType::*;
 use crate::constants::*;
 use crate::conversions::*;
-use solver::equations::Equation;
-use solver::formulas::Formula;
-use solver::solver_state::SolverState;
-use solver::variables::Variable;
+use s5::equations::Equation;
+use s5::formulas::Formula;
+use s5::solver_state::SolverState;
+use s5::variables::Variable;
 use std::f64::consts::PI;
 
 macro_rules! def_variable {
