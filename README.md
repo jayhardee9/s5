@@ -27,7 +27,7 @@ s5 = "0.1.0"
 ```
 
 ## Usage
-Please see the docs [here]()
+Please see the docs [here](https://docs.rs/s5/0.1.0/s5/)
 
 ## Contributing
 There are three ways of contributing to S<sup>5</sup>:
