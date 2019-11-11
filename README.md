@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/jayhardee9/s5.svg?branch=master)](https://travis-ci.org/jayhardee9/s5)
 # Super Slick Simple Substitution Solver (S<sup>5</sup>)
 S<sup>5</sup> is a simple equation solver written in Rust for the 
 purpose of solving some homework-style problems in orbital 
