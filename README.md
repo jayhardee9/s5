@@ -37,11 +37,5 @@ There are three ways of contributing to S<sup>5</sup>:
 3) Completing the `problems` crate (intends to solve all problems in
 _Fundamentals of Astrodynamics_ using S<sup>5</sup>)
 
-Pull requests are welcome! For major changes, please open an issue 
-first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate, and all must pass
-before merging into `master`.
-
 ## License
 MIT. Refer to `LICENSE.txt`.
